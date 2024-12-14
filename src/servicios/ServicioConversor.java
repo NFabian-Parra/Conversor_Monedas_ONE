@@ -3,7 +3,6 @@ package servicios;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import utilidades.Configuracion;
-
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -17,38 +16,30 @@ public class ServicioConversor {
         this.API_KEY = Configuracion.obtenerVariable("API_KEY");
     }
 
-    public double convertirMoneda(String monedaBase, String monedaDestino, double cantidad) {
+    /**
+     * Convierte una cantidad de una moneda base a una moneda destino.
+     * @param monedaBase:  La moneda de origen.
+     * @param monedaDestino:  La moneda de destino.
+     * @param cantidad: La cantidad a convertir, debe ser positiva.
+     * @return La cantidad convertida en la moneda destino.
+     * @throws ConversionException Si ocurre un error durante la conversión.
+     */
+
+    public double convertirMoneda(String monedaBase, String monedaDestino, double cantidad) throws ConversionException {
+        if (cantidad < 0) {
+            throw new ConversionException("La cantidad debe ser un número positivo.");
+        }
         try {
             // Validar que las monedas estén en mayúsculas
             monedaBase = monedaBase.toUpperCase();
             monedaDestino = monedaDestino.toUpperCase();
 
-            // Construimos la URL de la API con la moneda base
-            String urlStr = String.format(API_URL, API_KEY, monedaBase);
-            URL url = new URL(urlStr);
-
-            // Realizamos la solicitud HTTP GET
-            HttpURLConnection conexion = (HttpURLConnection) url.openConnection();
-            conexion.setRequestMethod("GET");
-            conexion.setConnectTimeout(10000);
-            conexion.setReadTimeout(10000);
-
-            int respuestaCode = conexion.getResponseCode();
-            if (respuestaCode != 200) {
-                System.out.println("Error al conectar con la API. Código de respuesta: " + respuestaCode);
-                return -1;
-            }
-
-            // Leemos y procesamos la respuesta JSON
-            InputStreamReader reader = new InputStreamReader(conexion.getInputStream());
-            Gson gson = new Gson();
-            JsonObject jsonObject = gson.fromJson(reader, JsonObject.class);
-            JsonObject conversionRates = jsonObject.getAsJsonObject("conversion_rates");
+            // Construir y realizar la solicitud HTTP GET
+            JsonObject conversionRates = obtenerConversionRates(monedaBase);
 
             // Validar que las monedas estén disponibles
             if (!conversionRates.has(monedaDestino)) {
-                System.out.println("Error: La moneda destino no es válida o no está disponible.");
-                return -1;
+                throw new ConversionException("La moneda destino no es válida o no está disponible.");
             }
 
             // Obtener la tasa de cambio y realizar la conversión
@@ -56,55 +47,53 @@ public class ServicioConversor {
             return cantidad * tasaCambio;
 
         } catch (Exception e) {
-            System.err.println("Error al realizar la conversión: " + e.getMessage());
-            return -1;
+            throw new ConversionException("Error al realizar la conversión: " + e.getMessage(), e);
         }
     }
 
-
-    // Método para obtener solo la tasa de cambio entre dos monedas
-
-    public double obtenerTasaCambio(String monedaBase, String monedaDestino) {
+    public double obtenerTasaCambio(String monedaBase, String monedaDestino) throws ConversionException {
         try {
             // Validar que las monedas estén en mayúsculas
             monedaBase = monedaBase.toUpperCase();
             monedaDestino = monedaDestino.toUpperCase();
 
-            // Construimos la URL de la API con la moneda base
-            String urlStr = String.format(API_URL, API_KEY, monedaBase);
-            URL url = new URL(urlStr);
-
-            // Realizamos la solicitud HTTP GET
-            HttpURLConnection conexion = (HttpURLConnection) url.openConnection();
-            conexion.setRequestMethod("GET");
-            conexion.setConnectTimeout(10000);
-            conexion.setReadTimeout(10000);
-
-            int respuestaCode = conexion.getResponseCode();
-            if (respuestaCode != 200) {
-                System.out.println("Error al conectar con la API. Código de respuesta: " + respuestaCode);
-                return -1;
-            }
-
-            // Leemos y procesamos la respuesta JSON
-            InputStreamReader reader = new InputStreamReader(conexion.getInputStream());
-            Gson gson = new Gson();
-            JsonObject jsonObject = gson.fromJson(reader, JsonObject.class);
-            JsonObject conversionRates = jsonObject.getAsJsonObject("conversion_rates");
+            // Construir y realizar la solicitud HTTP GET
+            JsonObject conversionRates = obtenerConversionRates(monedaBase);
 
             // Validar que las monedas estén disponibles
             if (!conversionRates.has(monedaDestino)) {
-                System.out.println("Error: La moneda destino no es válida o no está disponible.");
-                return -1;
+                throw new ConversionException("La moneda destino no es válida o no está disponible.");
             }
 
             // Obtener la tasa de cambio entre las monedas
             return conversionRates.get(monedaDestino).getAsDouble();
 
         } catch (Exception e) {
-            System.err.println("Error al obtener la tasa de cambio: " + e.getMessage());
-            return -1;
+            throw new ConversionException("Error al obtener la tasa de cambio: " + e.getMessage(), e);
         }
+    }
+
+    private JsonObject obtenerConversionRates(String monedaBase) throws Exception {
+        // Construimos la URL de la API con la moneda base
+        String urlStr = String.format(API_URL, API_KEY, monedaBase);
+        URL url = new URL(urlStr);
+
+        // Realizamos la solicitud HTTP GET
+        HttpURLConnection conexion = (HttpURLConnection) url.openConnection();
+        conexion.setRequestMethod("GET");
+        conexion.setConnectTimeout(10000);
+        conexion.setReadTimeout(10000);
+
+        int respuestaCode = conexion.getResponseCode();
+        if (respuestaCode != HttpURLConnection.HTTP_OK) {
+            throw new Exception("Error al conectar con la API. Código de respuesta: " + respuestaCode);
+        }
+
+        // Leemos y procesamos la respuesta JSON
+        InputStreamReader reader = new InputStreamReader(conexion.getInputStream());
+        Gson gson = new Gson();
+        JsonObject jsonObject = gson.fromJson(reader, JsonObject.class);
+        return jsonObject.getAsJsonObject("conversion_rates");
     }
 }
 

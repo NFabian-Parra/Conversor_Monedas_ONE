@@ -1,6 +1,7 @@
 package controlador;
 
 import servicios.ServicioConversor;
+import servicios.ConversionException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,10 +40,10 @@ public class ControladorPrincipal {
             System.out.print("Ingresa la cantidad a convertir: ");
             double cantidad = scanner.nextDouble();
 
-            // Realizar la conversión
-            double resultado = servicioConversor.convertirMoneda(monedaBase, monedaDestino, cantidad);
+            try {
+                // Realizar la conversión
+                double resultado = servicioConversor.convertirMoneda(monedaBase, monedaDestino, cantidad);
 
-            if (resultado != -1) {
                 // Presentación de la conversión
                 String conversion = String.format("¡Listo! Has convertido %.2f %s a %.2f %s.\n" +
                                 "La tasa de cambio actual es 1 %s = %.2f %s.",
@@ -50,8 +51,8 @@ public class ControladorPrincipal {
                         monedaBase, servicioConversor.obtenerTasaCambio(monedaBase, monedaDestino), monedaDestino);
                 historialConversiones.add(conversion);
                 System.out.println(conversion);
-            } else {
-                System.out.println("Hubo un problema al realizar la conversión.");
+            } catch (ConversionException e) {
+                System.err.println("Hubo un problema al realizar la conversión: " + e.getMessage());
             }
 
             // Preguntar si desea hacer otra conversión o ver historial
